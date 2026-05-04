@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="theme-color" content="#f5f0e8"/>
+<title>Velocity Controller</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Bebas+Neue&display=swap" rel="stylesheet"/>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:       #f5f0e8;
+  --ink:      #1a1a1a;
+  --mid:      #8a8070;
+  --rule:     #d4cdbf;
+  --go-bg:    #1a1a1a;
+  --go-fg:    #f5f0e8;
+  --stop-bg:  #f5f0e8;
+  --stop-fg:  #1a1a1a;
+  --lin:      #c0392b;
+  --ang:      #1a5276;
+  --online:   #27ae60;
+  --offline:  #8a8070;
+  --err:      #c0392b;
+}
+
+html, body {
+  height: 100%; background: var(--bg); color: var(--ink);
+  font-family: 'DM Mono', monospace;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  overflow: hidden;
+}
+
+/* ── layout ── */
+.page {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  padding: 20px 24px 28px;
+  gap: 0;
+}
+
+/* ── header ── */
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding-bottom: 14px;
+  border-bottom: 2px solid var(--ink);
+  margin-bottom: 20px;
+}
+.wordmark {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 28px;
+  letter-spacing: 3px;
+  color: var(--ink);
+  line-height: 1;
+}
+.status-area {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--mid);
+}
+.dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--offline);
+  transition: background .3s;
+  flex-shrink: 0;
+}
+.dot.online  { background: var(--online); }
+.dot.error   { background: var(--err); }
+
+/* ── connect row ── */
+.connect-row {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 24px;
+}
+.connect-row input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  border-bottom: 1.5px solid var(--rule);
+  font-family: 'DM Mono', monospace;
+  font-size: 12px;
+  color: var(--ink);
+  padding: 6px 2px;
+  outline: none;
+  transition: border-color .2s;
+}
+.connect-row input:focus { border-color: var(--ink); }
+.connect-row input::placeholder { color: var(--mid); }
+.btn-ping {
+  background: transparent;
+  border: 1.5px solid var(--ink);
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--ink);
+  padding: 6px 16px;
+  cursor: pointer;
+  transition: background .15s, color .15s;
+}
+.btn-ping:active { background: var(--ink); color: var(--bg); }
+
+/* ── section label ── */
+.section-label {
+  font-size: 9px;
+  letter-spacing: 2.5px;
+  text-transform: uppercase;
+  color: var(--mid);
+  margin-bottom: 16px;
+}
+
+/* ── sliders ── */
+.sliders {
+  margin-bottom: 28px;
+}
+.slider-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 20px;
+}
+.slider-row:last-child { margin-bottom: 0; }
+
+.slider-label {
+  font-size: 10px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  min-width: 32px;
+  color: var(--mid);
+}
+.slider-label.lin { color: var(--lin); }
+.slider-label.ang { color: var(--ang); }
+
+input[type=range] {
+  flex: 1;
+  -webkit-appearance: none;
+  height: 2px;
+  outline: none;
+  border-radius: 1px;
+  cursor: pointer;
+}
+input[type=range].lin-slider {
+  background: linear-gradient(90deg, var(--lin) var(--pct, 50%), var(--rule) var(--pct, 50%));
+}
+input[type=range].ang-slider {
+  background: linear-gradient(90deg, var(--ang) var(--pct, 50%), var(--rule) var(--pct, 50%));
+}
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  border: 2px solid var(--ink);
+  background: var(--bg);
+  cursor: pointer;
+  transition: transform .1s;
+}
+input[type=range]:active::-webkit-slider-thumb { transform: scale(1.2); }
+input[type=range].lin-slider::-webkit-slider-thumb { border-color: var(--lin); }
+input[type=range].ang-slider::-webkit-slider-thumb { border-color: var(--ang); }
+
+.slider-val {
+  font-size: 12px;
+  min-width: 42px;
+  text-align: right;
+  color: var(--ink);
+}
+
+/* ── divider ── */
+hr {
+  border: none;
+  border-top: 1px solid var(--rule);
+  margin-bottom: 28px;
+}
+
+/* ── GO / STOP buttons ── */
+.controls {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-bottom: 28px;
+}
+
+.btn-go, .btn-stop {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 38px;
+  letter-spacing: 4px;
+  border: 2px solid var(--ink);
+  padding: 22px 0;
+  cursor: pointer;
+  transition: transform .08s, opacity .1s;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  line-height: 1;
+}
+.btn-go {
+  background: var(--go-bg);
+  color: var(--go-fg);
+}
+.btn-stop {
+  background: var(--stop-bg);
+  color: var(--stop-fg);
+}
+.btn-go:active   { opacity: .75; transform: scale(.97); }
+.btn-stop:active { opacity: .75; transform: scale(.97); }
+
+/* disabled state */
+.btn-go.disabled, .btn-stop.disabled {
+  opacity: .3;
+  cursor: not-allowed;
+}
+
+/* ── telemetry ── */
+.telem {
+  display: flex;
+  justify-content: space-between;
+  padding-top: 14px;
+  border-top: 1px solid var(--rule);
+  font-size: 10px;
+  letter-spacing: 1px;
+  color: var(--mid);
+}
+.telem span b { color: var(--ink); font-weight: 500; }
+
+/* ── log ── */
+.log {
+  flex: 1;
+  overflow-y: auto;
+  margin-top: 14px;
+  font-size: 10px;
+  line-height: 1.9;
+  color: var(--mid);
+  border-top: 1px solid var(--rule);
+  padding-top: 10px;
+}
+.log .entry { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.log .ok  { color: var(--online); }
+.log .err { color: var(--err); }
+.log .inf { color: var(--ang); }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header>
+    <div class="wordmark">VEL CTRL</div>
+    <div class="status-area">
+      <div class="dot" id="dot"></div>
+      <span id="status-txt">OFFLINE</span>
+    </div>
+  </header>
+
+  <!-- connect -->
+  <div class="connect-row">
+    <input id="host" type="url" inputmode="url"
+           placeholder="http://192.168.x.x:8080"/>
+    <button class="btn-ping" onclick="ping()">PING</button>
+  </div>
+
+  <!-- sliders -->
+  <div class="sliders">
+    <div class="section-label">Speed Settings</div>
+
+    <div class="slider-row">
+      <span class="slider-label lin">LIN</span>
+      <input type="range" class="lin-slider" id="lin-slider"
+             min="0" max="100" value="50"
+             oninput="onSlider(this,'lin')"/>
+      <span class="slider-val" id="lin-val">1.00</span>
+    </div>
+
+    <div class="slider-row">
+      <span class="slider-label ang">ANG</span>
+      <input type="range" class="ang-slider" id="ang-slider"
+             min="0" max="100" value="50"
+             oninput="onSlider(this,'ang')"/>
+      <span class="slider-val" id="ang-val">1.00</span>
+    </div>
+  </div>
+
+  <hr/>
+
+  <!-- GO / STOP -->
+  <div class="controls">
+    <button class="btn-go  disabled" id="btn-go"   onclick="cmdGo()">GO</button>
+    <button class="btn-stop disabled" id="btn-stop" onclick="cmdStop()">STOP</button>
+  </div>
+
+  <!-- telem -->
+  <div class="telem">
+    <span>LIN <b id="t-lin">—</b></span>
+    <span>ANG <b id="t-ang">—</b></span>
+    <span>STATE <b id="t-state">—</b></span>
+  </div>
+
+  <!-- log -->
+  <div class="log" id="log"></div>
+
+</div>
+
+<script>
+// ── Constants ─────────────────────────────────────────────────────────── //
+const MAX_LIN = 2.0;   // must match ROS node max_linear param
+const MAX_ANG = 2.0;   // must match ROS node max_angular param
+
+// ── State ─────────────────────────────────────────────────────────────── //
+let baseUrl   = '';
+let connected = false;
+let isMoving  = false;
+
+// ── Helpers ───────────────────────────────────────────────────────────── //
+function linVal()  { return (parseInt(document.getElementById('lin-slider').value) / 100) * MAX_LIN; }
+function angVal()  { return (parseInt(document.getElementById('ang-slider').value) / 100) * MAX_ANG; }
+
+function log(msg, cls = '') {
+  const el = document.getElementById('log');
+  const d  = document.createElement('div');
+  d.className = 'entry ' + cls;
+  const t = new Date().toLocaleTimeString('en', {hour12:false});
+  d.textContent = `[${t}] ${msg}`;
+  el.prepend(d);
+  while (el.children.length > 50) el.removeChild(el.lastChild);
+}
+
+function setConnected(ok, label) {
+  connected = ok;
+  document.getElementById('dot').className = 'dot ' + (ok ? 'online' : (label==='ERR' ? 'error' : ''));
+  document.getElementById('status-txt').textContent = label;
+  // enable/disable buttons
+  ['btn-go','btn-stop'].forEach(id => {
+    document.getElementById(id).classList.toggle('disabled', !ok);
+  });
+}
+
+function updateTelem(lin, ang, state) {
+  document.getElementById('t-lin').textContent   = lin  !== null ? lin.toFixed(2)  : '—';
+  document.getElementById('t-ang').textContent   = ang  !== null ? ang.toFixed(2)  : '—';
+  document.getElementById('t-state').textContent = state || '—';
+}
+
+// ── Sliders ───────────────────────────────────────────────────────────── //
+function onSlider(el, type) {
+  const pct = el.value + '%';
+  el.style.setProperty('--pct', pct);
+
+  const val = type === 'lin' ? linVal() : angVal();
+  document.getElementById(type + '-val').textContent = val.toFixed(2);
+
+  // If already moving, live-update the speed
+  if (connected && isMoving) {
+    sendSpeed();
+  }
+}
+
+// ── Network ───────────────────────────────────────────────────────────── //
+async function request(path, body = null) {
+  const opts = {
+    method: body !== null ? 'POST' : 'GET',
+    headers: body !== null ? {'Content-Type':'application/json'} : {},
+  };
+  if (body !== null) opts.body = JSON.stringify(body);
+  return fetch(baseUrl + path, opts);
+}
+
+async function ping() {
+  let url = document.getElementById('host').value.trim();
+  if (!url) { log('Enter robot IP first', 'err'); return; }
+  if (!url.startsWith('http')) url = 'http://' + url;
+  baseUrl = url.replace(/\/$/, '');
+  setConnected(false, 'PING…');
+  try {
+    const r = await fetch(baseUrl + '/health', { signal: AbortSignal.timeout(3000) });
+    if (r.ok) {
+      setConnected(true, 'ONLINE');
+      log('Connected to ' + baseUrl, 'ok');
+      try { localStorage.setItem('vc_host', baseUrl); } catch(_){}
+      pollState();
+    } else {
+      setConnected(false, 'ERR');
+      log('Ping failed: HTTP ' + r.status, 'err');
+    }
+  } catch(e) {
+    setConnected(false, 'ERR');
+    log('Cannot reach: ' + e.message, 'err');
+  }
+}
+
+async function cmdGo() {
+  if (!connected) return;
+  const lin = linVal(), ang = angVal();
+  try {
+    await request('/go', { linear: lin, angular: ang });
+    isMoving = true;
+    updateTelem(lin, ang, 'MOVING');
+    log(`GO  lin=${lin.toFixed(2)}  ang=${ang.toFixed(2)}`, 'inf');
+  } catch(e) { log('GO failed: ' + e.message, 'err'); }
+}
+
+async function cmdStop() {
+  if (!connected) return;
+  try {
+    await request('/stop', {});
+    isMoving = false;
+    updateTelem(0, 0, 'STOPPED');
+    log('STOP', 'err');
+  } catch(e) { log('STOP failed: ' + e.message, 'err'); }
+}
+
+async function sendSpeed() {
+  try {
+    await request('/speed', { linear: linVal(), angular: angVal() });
+  } catch(_) {}
+}
+
+// ── Poll /state every 2s ─────────────────────────────────────────────── //
+function pollState() {
+  if (!connected) return;
+  fetch(baseUrl + '/state')
+    .then(r => r.json())
+    .then(d => {
+      isMoving = d.moving;
+      updateTelem(d.linear, d.angular, d.moving ? 'MOVING' : 'STOPPED');
+      setTimeout(pollState, 2000);
+    })
+    .catch(() => setTimeout(pollState, 3000));
+}
+
+// ── Init ─────────────────────────────────────────────────────────────── //
+window.addEventListener('DOMContentLoaded', () => {
+  // restore saved host
+  try {
+    const h = localStorage.getItem('vc_host');
+    if (h) document.getElementById('host').value = h;
+  } catch(_) {}
+
+  // initialise slider gradients and value labels
+  ['lin','ang'].forEach(type => {
+    const el = document.getElementById(type + '-slider');
+    el.style.setProperty('--pct', el.value + '%');
+    const val = type === 'lin' ? linVal() : angVal();
+    document.getElementById(type + '-val').textContent = val.toFixed(2);
+  });
+
+  log('Enter robot IP and press PING', 'inf');
+});
+</script>
+</body>
+</html>
