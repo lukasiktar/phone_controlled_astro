@@ -1,8 +1,8 @@
 """
-ROS2 node for controlling the Astro robot using a phone. 
+ROS2 node for publishing STOP and GO messages with speeds via HTTP interface.
 
 Listens on HTTP for:
-  POST /go          { "linear": 1.2, "angular": 0.5 }  → start moving
+  POST /go          {}                                  → start moving with last speeds
   POST /stop        {}                                  → stop immediately
   POST /speed       { "linear": 1.2, "angular": 0.5 }  → update speeds while moving
   GET  /state       → current state (moving/stopped, speeds)
@@ -20,6 +20,7 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 import rclpy
 from rclpy.node import Node
 from geometry_msgs.msg import Twist
+from std_msgs.msg import String
 
 #  HTTP handler                                                                
 
@@ -110,6 +111,12 @@ class VelocityControllerNode(Node):
         self.pub = self.create_publisher(Twist, "/cmd_vel_joy", 10)
         self.get_logger().info("Publisher created on /cmd_vel_joy")
 
+
+        self.state_pub = self.create_publisher(String, "/velocity_controller/state", 10)
+
+        self.speed_rate_pub = self.create_publisher(Twist, "/velocity_controller/speed_rates", 10)
+        
+
         # State
         self.lock = threading.Lock()
         self.moving = False
@@ -119,7 +126,7 @@ class VelocityControllerNode(Node):
 
         # Publish timer
         rate = 10.0  # Hz
-        self.create_timer(1.0 / rate, self.publish_velocity)
+        self.create_timer(1.0 / rate, self.publish_velocity_rate)
 
         # HTTP server in separate thread
         host = "0.0.0.0"
@@ -152,7 +159,6 @@ class VelocityControllerNode(Node):
         msg = Twist()
         msg.linear.x  = 0.0
         msg.angular.z = 0.0
-        self.pub.publish(msg)
         self.get_logger().info("STOP")
 
 
@@ -174,13 +180,14 @@ class VelocityControllerNode(Node):
             max(-ma, min(ma, angular)),
         )
 
-    def publish_velocity(self):
+    def publish_velocity_rate(self):
         with self.lock:
+            self.state_pub.publish(String(data=f"{self.moving}"))
             if self.moving:
                 msg = Twist()
                 msg.linear.x = self.linear_speed
                 msg.angular.z = self.angular_speed
-                self.pub.publish(msg)
+                self.speed_rate_pub.publish(msg)
 
     def destroy_node(self):
         self._http_server.shutdown()
